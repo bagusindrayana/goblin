@@ -3,6 +3,7 @@ const TARGET_IMAGE_URL = '/images/bahlil.jpg';
 
 let faceMatcher = null;
 let uploadedFiles = [];
+let censorOption = 'pixelated';
 
 // --- Elemen DOM ---
 const inputImageUpload = document.getElementById('inputImageUpload');
@@ -75,25 +76,72 @@ async function processImage(file) {
 
             if (bestMatch.label === 'TARGET') {
                 foundTargetInImage = true;
-                // Sensor dengan kotak hitam
-                context.fillStyle = 'black';
-                context.fillRect(box.x, box.y, box.width, box.height);
 
-                // context.fillStyle = 'rgba(52, 211, 153, 0.9)'; // Green
-                // context.fillRect(box.x, box.y - 20, Math.min(box.width, 180), 20);
-                // context.font = '14px Space Mono';
-                // context.fillStyle = 'white';
-                // context.fillText('TARGET IDENTIFIED', box.x + 5, box.y - 5);
+                if (censorOption === 'black') {
+                    applyBlackBoxCensor(context, box);
+                } else {
+                    applyPixelatedCensor(context, imageElement, box);
+                }
             }
-        
-        });
-        return { canvas, foundTarget: foundTargetInImage, fileName: file.name };
+    });
+    return { canvas, foundTarget: foundTargetInImage, fileName: file.name };
     } catch (error) {
-        // ... (Error handling tidak berubah) ...
         console.error(`Error processing image ${file.name}:`, error);
         return { canvas: null, foundTarget: false, fileName: file.name, error: true };
     }
 }
+
+// black box censor
+function applyBlackBoxCensor(context, box) {
+    context.save();
+    context.fillStyle = 'black';
+    context.fillRect(box.x, box.y, box.width, box.height);
+    context.restore();
+}
+// Pixelate censor
+function applyPixelatedCensor(context, imageElement, box) {
+    // Adaptive pixelation
+    const x = Math.max(0, Math.floor(box.x));
+    const y = Math.max(0, Math.floor(box.y));
+    const width = Math.max(1, Math.floor(box.width));
+    const height = Math.max(1, Math.floor(box.height));
+
+    const faceSize = Math.max(width, height);
+    const BASE_BLOCK_RATIO = 0.12;
+    let pixelBlock = Math.max(2, Math.round(faceSize * BASE_BLOCK_RATIO));
+
+    const imageMaxDim = Math.max(imageElement.width || width, imageElement.height || height);
+    const maxBlock = Math.max(2, Math.round(imageMaxDim * 0.08));
+    pixelBlock = Math.min(pixelBlock, maxBlock);
+
+    const scaledW = Math.max(1, Math.ceil(width / pixelBlock));
+    const scaledH = Math.max(1, Math.ceil(height / pixelBlock));
+
+    const off = document.createElement('canvas');
+    off.width = width;
+    off.height = height;
+    const offCtx = off.getContext('2d');
+    offCtx.drawImage(imageElement, x, y, width, height, 0, 0, width, height);
+
+    // tiny canvas for pixelation
+    const tiny = document.createElement('canvas');
+    tiny.width = scaledW;
+    tiny.height = scaledH;
+    const tinyCtx = tiny.getContext('2d');
+    tinyCtx.imageSmoothingEnabled = false;
+    tinyCtx.clearRect(0, 0, scaledW, scaledH);
+    tinyCtx.drawImage(off, 0, 0, width, height, 0, 0, scaledW, scaledH);
+
+    context.save();
+    context.imageSmoothingEnabled = false;
+    context.drawImage(tiny, 0, 0, scaledW, scaledH, x, y, width, height);
+    context.restore();
+}
+
+const _censorRadios = document.querySelectorAll('input[name="censorOption"]');
+_censorRadios.forEach(r => r.addEventListener('change', (e) => {
+    censorOption = e.target.value;
+}));
 
 inputImageUpload.addEventListener('change', (event) => {
     uploadedFiles = Array.from(event.target.files);
