@@ -166,6 +166,65 @@ function applyPixelatedCensor(context, imageElement, box) {
     context.restore();
 }
 
+// Upload to tmpfiles.org
+async function uploadCanvasToTmpfiles(canvas, filename) {
+    return new Promise((resolve, reject) => {
+        canvas.toBlob(async (blob) => {
+            if (!blob) return reject(new Error('Failed to create blob from canvas'));
+
+            try {
+                const form = new FormData();
+                form.append('file', blob, filename);
+
+                const resp = await fetch('https://tmpfiles.org/api/v1/upload', {
+                    method: 'POST',
+                    body: form
+                });
+
+                if (!resp.ok) {
+                    const text = await resp.text().catch(() => '');
+                    return reject(new Error(`Upload failed: ${resp.status} ${resp.statusText} ${text}`));
+                }
+
+                const json = await resp.json().catch(() => null);
+                if (json && json.status === 'success' && json.data && json.data.url) {
+                    resolve(json.data.url.replace("http://tmpfiles.org/","http://tmpfiles.org/dl/"));
+                } else {
+                    reject(new Error('Unexpected response from upload API'));
+                }
+            } catch (err) {
+                reject(err);
+            }
+        }, 'image/png');
+    });
+}
+
+async function copyToClipboard(text) {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        try {
+            await navigator.clipboard.writeText(text);
+            return true;
+        } catch (e) {
+            // fall through to fallback
+        }
+    }
+
+    // Fallback: create a temporary textarea, select and copy
+    try {
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        ta.style.position = 'fixed';
+        ta.style.left = '-9999px';
+        document.body.appendChild(ta);
+        ta.select();
+        const ok = document.execCommand('copy');
+        document.body.removeChild(ta);
+        return ok;
+    } catch (e) {
+        return false;
+    }
+}
+
 const _censorRadios = document.querySelectorAll('input[name="censorOption"]');
 _censorRadios.forEach(r => r.addEventListener('change', (e) => {
     censorOption = e.target.value;
@@ -207,13 +266,63 @@ scanButton.addEventListener('click', async () => {
             gridItem.appendChild(result.canvas);
 
 
+            
             const downloadBtn = document.createElement('a');
             // Konversi canvas ke data URL
             downloadBtn.href = result.canvas.toDataURL('image/png'); 
             downloadBtn.download = `censored_${result.fileName}`;
-            downloadBtn.className = 'download-btn absolute top-2 right-2 bg-green-600 hover:bg-green-700 text-white p-2 rounded-full transition-all duration-300 shadow-lg';
+            downloadBtn.className = 'download-btn absolute top-2 right-12 bg-green-600 hover:bg-green-700 text-white p-2 rounded-full transition-all duration-300 shadow-lg';
             downloadBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd" /></svg>`;
+            downloadBtn.title = 'Download censored image';
             gridItem.appendChild(downloadBtn);
+            
+            // URL display
+            const urlAnchor = document.createElement('a');
+            urlAnchor.className = 'text-xs text-blue-300 mt-2 break-words truncate w-full px-2 text-center';
+            urlAnchor.target = '_blank';
+            urlAnchor.rel = 'noopener noreferrer';
+            urlAnchor.style.display = 'block';
+            urlAnchor.textContent = '';
+            gridItem.appendChild(urlAnchor);
+
+            // Upload & copy URL button
+            const uploadBtn = document.createElement('button');
+            uploadBtn.type = 'button';
+            uploadBtn.className = 'upload-btn absolute top-2 right-2 bg-blue-600 hover:bg-blue-700 text-white p-2 rounded-full transition-all duration-300 shadow-lg';
+            uploadBtn.title = 'Upload to tmpfiles.org and copy URL';
+            uploadBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M3 3a1 1 0 011-1h4a1 1 0 110 2H5v12h10V4h-3a1 1 0 110-2h4a1 1 0 011 1v14a1 1 0 01-1 1H4a1 1 0 01-1-1V3z"/></svg>`;
+            gridItem.appendChild(uploadBtn);
+
+            uploadBtn.addEventListener('click', async () => {
+                if (!result.canvas) return;
+                uploadBtn.disabled = true;
+                const origHTML = uploadBtn.innerHTML;
+                // spinner
+                uploadBtn.innerHTML = `<svg class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path></svg>`;
+                try {
+                    updateStatus('Uploading image to tmpfiles.org...', 'text-green-400');
+                    const tmpUrl = await uploadCanvasToTmpfiles(result.canvas, `censored_${result.fileName}`);
+                    // show URL in UI and copy to clipboard
+                    urlAnchor.href = tmpUrl;
+                    urlAnchor.textContent = tmpUrl;
+                    const copied = await copyToClipboard(tmpUrl);
+                    if (copied) {
+                        updateStatus('Temporary URL copied to clipboard.', 'text-green-400');
+                        uploadBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 00-1.414 0L9 11.586 6.707 9.293a1 1 0 00-1.414 1.414l3 3a1 1 0 001.414 0l7-7a1 1 0 000-1.414z" clip-rule="evenodd" /></svg>`;
+                    } else {
+                        updateStatus('Uploaded but failed to copy to clipboard. URL shown below.', 'text-yellow-400');
+                        uploadBtn.innerHTML = origHTML;
+                    }
+                } catch (err) {
+                    console.error('Upload error:', err);
+                    updateStatus('Upload failed. See console for details.', 'text-red-500');
+                    uploadBtn.innerHTML = origHTML;
+                } finally {
+                    uploadBtn.disabled = false;
+                    // restore icon after a short delay if it was changed to check
+                    setTimeout(() => { try { uploadBtn.innerHTML = origHTML; } catch(e){} }, 3000);
+                }
+            });
         }
         
         const fileNameLabel = document.createElement('p');

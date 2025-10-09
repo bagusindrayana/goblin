@@ -46,3 +46,16 @@ body {
     visibility: visible;
     transform: scale(1);
 }
+
+.result-item .upload-btn {
+    opacity: 0;
+    visibility: hidden;
+    transform: scale(0.8);
+    transition: opacity 0.3s ease, visibility 0.3s ease, transform 0.3s ease;
+}
+
+.result-item:hover .upload-btn {
+    opacity: 1;
+    visibility: visible;
+    transform: scale(1);
+}
