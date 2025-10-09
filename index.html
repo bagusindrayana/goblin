@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Graphical Obfuscation of Bahlil Locator and Identity Network.">
+    <title>G.O.B.L.I.N</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Space+Mono&display=swap" rel="stylesheet">
+</head>
+<body class="bg-gray-900 text-gray-100 min-h-screen flex flex-col items-center justify-center p-4 font-mono">
+
+    <div class="container mx-auto bg-gray-800 p-8 rounded-lg shadow-lg border border-gray-700 max-w-4xl">
+        <h1 class="text-3xl font-bold text-center mb-6 text-green-400 drop-shadow-neon-green">
+            [ G.O.B.L.I.N ]
+        </h1>
+        <p class="text-sm text-gray-400 text-center mb-8">
+            // Graphical Obfuscation of Bahlil Locator and Identity Network.
+        </p>
+
+        <div class="mb-6">
+            <label for="inputImageUpload" class="block text-gray-300 text-sm font-bold mb-2 cursor-pointer hover:text-green-400 transition-colors duration-200">
+                &gt; SELECT IMAGES FOR ANALYSIS
+            </label>
+            <input type="file" id="inputImageUpload" accept="image/*" multiple class="block w-full text-sm text-gray-500
+                file:mr-4 file:py-2 file:px-4
+                file:rounded-full file:border-0
+                file:text-sm file:font-semibold
+                file:bg-gray-700 file:text-green-400
+                hover:file:bg-gray-600 hover:file:text-green-300
+                transition-colors duration-200 cursor-pointer
+                focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-opacity-50" disabled>
+        </div>
+
+        <button id="scanButton" class="w-full bg-green-600 text-white font-bold py-3 rounded-lg hover:bg-green-700 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-opacity-50 drop-shadow-neon-green-sm" disabled>
+            AWAITING SYSTEM READY...
+        </button>
+
+        <div id="statusMessage" class="mt-4 text-center text-green-400 text-sm animate-pulse">
+            // System Initializing //
+        </div>
+        
+        <div id="imageGridContainer" class="mt-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            </div>
+
+        <p id="overallMatchStatus" class="mt-8 text-center text-lg font-bold"></p>
+    </div>
+
+    <script defer src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
+    <script defer src="script.js"></script>
+</body>
+</html>

@@ -1,0 +1,48 @@
+body {
+    font-family: 'Space Mono', monospace;
+}
+
+/* Custom Tailwind utility classes for neon effect */
+.drop-shadow-neon-green {
+    filter: drop-shadow(0 0 5px rgba(0, 255, 0, 0.7)) drop-shadow(0 0 10px rgba(0, 255, 0, 0.5));
+}
+
+.drop-shadow-neon-green-sm {
+    filter: drop-shadow(0 0 3px rgba(0, 255, 0, 0.7));
+}
+
+.shadow-neon-green-sm {
+    box-shadow: 0 0 8px rgba(0, 255, 0, 0.5);
+}
+
+/* Custom pulse animation for button */
+@keyframes pulse-once {
+    0% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.02); opacity: 0.95; }
+    100% { transform: scale(1); opacity: 1; }
+}
+
+.animate-pulse-once {
+    animation: pulse-once 1.5s ease-in-out forwards;
+}
+
+/* To ensure canvas overlays correctly */
+#resultCanvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+}
+
+
+.result-item .download-btn {
+    opacity: 0;
+    visibility: hidden;
+    transform: scale(0.8);
+    transition: opacity 0.3s ease, visibility 0.3s ease, transform 0.3s ease;
+}
+
+.result-item:hover .download-btn {
+    opacity: 1;
+    visibility: visible;
+    transform: scale(1);
+}
