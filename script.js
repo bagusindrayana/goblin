@@ -3,10 +3,18 @@ const MODEL_URL = '/models';
 
 let faceMatcher = null;
 let uploadedFiles = [];
+let uploadedUrls = [];
 let censorOption = 'pixelated';
 
 // --- Elemen DOM ---
 const inputImageUpload = document.getElementById('inputImageUpload');
+const inputImageUrl = document.getElementById('inputImageUrl');
+const addUrlButton = document.getElementById('addUrlButton');
+const urlListContainer = document.getElementById('urlListContainer');
+const tabUploadBtn = document.getElementById('tabUploadBtn');
+const tabUrlBtn = document.getElementById('tabUrlBtn');
+const uploadTab = document.getElementById('uploadTab');
+const urlTab = document.getElementById('urlTab');
 const scanButton = document.getElementById('scanButton');
 const statusMessage = document.getElementById('statusMessage');
 const imageGridContainer = document.getElementById('imageGridContainer');
@@ -71,7 +79,10 @@ async function loadTargetFace() {
         faceMatcher = new faceapi.FaceMatcher(labeledFaceDescriptors, 0.6);
         
         updateStatus("System ready. All target references loaded.");
-        inputImageUpload.disabled = false;
+    inputImageUpload.disabled = false;
+    // enable URL input controls as well
+    try { if (inputImageUrl) inputImageUrl.disabled = false; } catch(e){}
+    try { if (addUrlButton) addUrlButton.disabled = false; } catch(e){}
         scanButton.textContent = "INITIATE SCAN";
         scanButton.classList.add('animate-pulse-once');
 
@@ -244,8 +255,75 @@ inputImageUpload.addEventListener('change', (event) => {
     }
 });
 
+// Tab switching
+tabUploadBtn.addEventListener('click', () => {
+    uploadTab.style.display = '';
+    urlTab.style.display = 'none';
+    tabUploadBtn.classList.add('bg-green-600');
+    tabUploadBtn.classList.remove('bg-gray-700');
+    tabUrlBtn.classList.remove('bg-green-600');
+    tabUrlBtn.classList.add('bg-gray-700');
+});
+
+tabUrlBtn.addEventListener('click', () => {
+    uploadTab.style.display = 'none';
+    urlTab.style.display = '';
+    tabUrlBtn.classList.add('bg-green-600');
+    tabUrlBtn.classList.remove('bg-gray-700');
+    tabUploadBtn.classList.remove('bg-green-600');
+    tabUploadBtn.classList.add('bg-gray-700');
+});
+
+// Add URL to list
+addUrlButton.addEventListener('click', () => {
+    const url = (inputImageUrl.value || '').trim();
+    if (!url) return;
+    // Basic validation
+    if (!/^https?:\/\/.+\.(jpg|jpeg|png|gif|webp)(\?.*)?$/i.test(url)) {
+        updateStatus('Please provide a valid image URL (jpg/png/gif/webp).', 'text-yellow-400');
+        return;
+    }
+
+    uploadedUrls.push(url);
+    renderUrlList();
+    inputImageUrl.value = '';
+    scanButton.disabled = false;
+    scanButton.textContent = `SCAN ${uploadedFiles.length + uploadedUrls.length} IMAGES`;
+    updateStatus(`// ${uploadedFiles.length + uploadedUrls.length} images ready (files + URLs). //`);
+});
+
+function renderUrlList() {
+    urlListContainer.innerHTML = '';
+    uploadedUrls.forEach((u, idx) => {
+        const row = document.createElement('div');
+        row.className = 'flex items-center justify-between bg-gray-800 px-2 py-1 rounded';
+        const txt = document.createElement('a');
+        txt.href = u;
+        txt.target = '_blank';
+        txt.className = 'text-xs text-blue-300 truncate pr-2';
+        txt.textContent = u;
+        const removeBtn = document.createElement('button');
+        removeBtn.className = 'text-xs px-2 py-1 bg-red-600 hover:bg-red-700 rounded';
+        removeBtn.textContent = 'Remove';
+        removeBtn.addEventListener('click', () => {
+            uploadedUrls.splice(idx, 1);
+            renderUrlList();
+            const total = uploadedFiles.length + uploadedUrls.length;
+            if (total === 0) {
+                scanButton.disabled = true;
+                scanButton.textContent = 'INITIATE SCAN';
+            } else {
+                scanButton.textContent = `SCAN ${total} IMAGES`;
+            }
+        });
+        row.appendChild(txt);
+        row.appendChild(removeBtn);
+        urlListContainer.appendChild(row);
+    });
+}
+
 scanButton.addEventListener('click', async () => {
-    if (!faceMatcher || uploadedFiles.length === 0) return;
+    if (!faceMatcher || (uploadedFiles.length === 0 && uploadedUrls.length === 0)) return;
 
     updateStatus("Initiating batch scan...");
     scanButton.disabled = true;
@@ -343,6 +421,116 @@ scanButton.addEventListener('click', async () => {
         gridItem.appendChild(imageStatus);
 
         imageGridContainer.appendChild(gridItem);
+    }
+
+    // Process uploaded URLs
+    for (const url of uploadedUrls) {
+        try {
+            updateStatus(`Downloading URL: ${url.split('/').pop()}...`);
+            const resp = await fetch(`https://potadev.com/proxy-image.php?url=${url}`, {mode: 'cors'});
+            if (!resp.ok) {
+                console.warn(`Failed to fetch ${url}: ${resp.status}`);
+                const gridItem = document.createElement('div');
+                gridItem.className = 'result-item relative bg-gray-700 border border-gray-600 rounded-md overflow-hidden p-2 flex flex-col items-center justify-center';
+                const errText = document.createElement('p');
+                errText.className = 'text-xs text-red-400';
+                errText.textContent = `Failed to download URL: ${url}`;
+                gridItem.appendChild(errText);
+                imageGridContainer.appendChild(gridItem);
+                continue;
+            }
+            const blob = await resp.blob();
+            const fakeFile = new File([blob], url.split('/').pop() || 'remote.png', { type: blob.type });
+            const result = await processImage(fakeFile);
+
+            const gridItem = document.createElement('div');
+            gridItem.className = 'result-item relative bg-gray-700 border border-gray-600 rounded-md overflow-hidden p-2 flex flex-col items-center justify-center';
+
+            if (result.canvas) {
+                result.canvas.style.maxWidth = '100%';
+                result.canvas.style.height = 'auto';
+                gridItem.appendChild(result.canvas);
+
+                const downloadBtn = document.createElement('a');
+                downloadBtn.href = result.canvas.toDataURL('image/png');
+                downloadBtn.download = `censored_${result.fileName}`;
+                downloadBtn.className = 'download-btn absolute top-2 right-12 bg-green-600 hover:bg-green-700 text-white p-2 rounded-full transition-all duration-300 shadow-lg';
+                downloadBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd" /></svg>`;
+                downloadBtn.title = 'Download censored image';
+                gridItem.appendChild(downloadBtn);
+
+                const urlAnchor = document.createElement('a');
+                urlAnchor.className = 'text-xs text-blue-300 mt-2 break-words truncate w-full px-2 text-center';
+                urlAnchor.target = '_blank';
+                urlAnchor.rel = 'noopener noreferrer';
+                urlAnchor.style.display = 'block';
+                urlAnchor.textContent = url;
+                gridItem.appendChild(urlAnchor);
+
+                const uploadBtn = document.createElement('button');
+                uploadBtn.type = 'button';
+                uploadBtn.className = 'upload-btn absolute top-2 right-2 bg-blue-600 hover:bg-blue-700 text-white p-2 rounded-full transition-all duration-300 shadow-lg';
+                uploadBtn.title = 'Upload to tmpfiles.org and copy URL';
+                uploadBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M3 3a1 1 0 011-1h4a1 1 0 110 2H5v12h10V4h-3a1 1 0 110-2h4a1 1 0 011 1v14a1 1 0 01-1 1H4a1 1 0 01-1-1V3z"/></svg>`;
+                gridItem.appendChild(uploadBtn);
+
+                uploadBtn.addEventListener('click', async () => {
+                    if (!result.canvas) return;
+                    uploadBtn.disabled = true;
+                    const origHTML = uploadBtn.innerHTML;
+                    uploadBtn.innerHTML = `<svg class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path></svg>`;
+                    try {
+                        updateStatus('Uploading image to tmpfiles.org...', 'text-green-400');
+                        const tmpUrl = await uploadCanvasToTmpfiles(result.canvas, `censored_${result.fileName}`);
+                        urlAnchor.href = tmpUrl;
+                        urlAnchor.textContent = tmpUrl;
+                        const copied = await copyToClipboard(tmpUrl);
+                        if (copied) {
+                            updateStatus('Temporary URL copied to clipboard.', 'text-green-400');
+                            uploadBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 00-1.414 0L9 11.586 6.707 9.293a1 1 0 00-1.414 1.414l3 3a1 1 0 001.414 0l7-7a1 1 0 000-1.414z" clip-rule="evenodd" /></svg>`;
+                        } else {
+                            updateStatus('Uploaded but failed to copy to clipboard. URL shown below.', 'text-yellow-400');
+                            uploadBtn.innerHTML = origHTML;
+                        }
+                    } catch (err) {
+                        console.error('Upload error:', err);
+                        updateStatus('Upload failed. See console for details.', 'text-red-500');
+                        uploadBtn.innerHTML = origHTML;
+                    } finally {
+                        uploadBtn.disabled = false;
+                        setTimeout(() => { try { uploadBtn.innerHTML = origHTML; } catch(e){} }, 3000);
+                    }
+                });
+            }
+
+            const fileNameLabel = document.createElement('p');
+            fileNameLabel.className = 'text-xs text-gray-400 mt-2 truncate w-full px-2 text-center';
+            fileNameLabel.textContent = result.fileName;
+            gridItem.appendChild(fileNameLabel);
+
+            const imageStatus = document.createElement('p');
+            imageStatus.className = 'text-sm font-bold mt-1';
+            if (result.foundTarget) {
+                imageStatus.textContent = 'TARGET MATCHED';
+                imageStatus.classList.add('text-green-400', 'drop-shadow-neon-green-sm');
+                totalTargetsFound++;
+            } else {
+                imageStatus.textContent = 'NO TARGET';
+                imageStatus.classList.add('text-yellow-400');
+            }
+            gridItem.appendChild(imageStatus);
+
+            imageGridContainer.appendChild(gridItem);
+        } catch (err) {
+            console.error('Error processing URL', url, err);
+            const gridItem = document.createElement('div');
+            gridItem.className = 'result-item relative bg-gray-700 border border-gray-600 rounded-md overflow-hidden p-2 flex flex-col items-center justify-center';
+            const errText = document.createElement('p');
+            errText.className = 'text-xs text-red-400';
+            errText.textContent = `Error processing URL: ${url}`;
+            gridItem.appendChild(errText);
+            imageGridContainer.appendChild(gridItem);
+        }
     }
 
     // Perbarui status keseluruhan

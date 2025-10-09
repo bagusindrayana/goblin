@@ -11,26 +11,44 @@
 </head>
 <body class="bg-gray-900 text-gray-100 min-h-screen flex flex-col items-center justify-center p-4 font-mono">
 
-    <div class="container mx-auto bg-gray-800 p-8 rounded-lg shadow-lg border border-gray-700 max-w-4xl">
-        <h1 class="text-3xl font-bold text-center mb-6 text-green-400 drop-shadow-neon-green">
+    <div class="container mx-auto bg-gray-800 p-4 md:p-8 rounded-lg shadow-lg border border-gray-700 max-w-4xl">
+        <h1 class="text-2xl md:text-3xl font-bold text-center mb-6 text-green-400 drop-shadow-neon-green">
             [ G.O.B.L.I.N ]
         </h1>
         <p class="text-sm text-gray-400 text-center mb-8">
             // Graphical Obfuscation of Bahlil Locator and Identity Network.
         </p>
 
+        <!-- pload files OR provide image URLs -->
         <div class="mb-6">
-            <label for="inputImageUpload" class="block text-gray-300 text-sm font-bold mb-2 cursor-pointer hover:text-green-400 transition-colors duration-200">
-                &gt; SELECT IMAGES FOR ANALYSIS
-            </label>
-            <input type="file" id="inputImageUpload" accept="image/*" multiple class="block w-full text-sm text-gray-500
-                file:mr-4 file:py-2 file:px-4
-                file:rounded-full file:border-0
-                file:text-sm file:font-semibold
-                file:bg-gray-700 file:text-green-400
-                hover:file:bg-gray-600 hover:file:text-green-300
-                transition-colors duration-200 cursor-pointer
-                focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-opacity-50" disabled>
+            <div class="flex space-x-2 mb-4">
+                <button id="tabUploadBtn" class="px-3 py-1 rounded-md bg-green-600 text-white text-sm">Upload Images</button>
+                <button id="tabUrlBtn" class="px-3 py-1 rounded-md bg-gray-700 text-gray-200 text-sm">Image URL</button>
+            </div>
+
+            <div id="uploadTab">
+                <label for="inputImageUpload" class="block text-gray-300 text-sm font-bold mb-2 cursor-pointer hover:text-green-400 transition-colors duration-200">
+                    &gt; SELECT IMAGES FOR ANALYSIS
+                </label>
+                <input type="file" id="inputImageUpload" accept="image/*" multiple class="block w-full text-sm text-gray-500
+                    file:mr-4 file:py-2 file:px-4
+                    file:rounded-full file:border-0
+                    file:text-sm file:font-semibold
+                    file:bg-gray-700 file:text-green-400
+                    hover:file:bg-gray-600 hover:file:text-green-300
+                    transition-colors duration-200 cursor-pointer
+                    focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-opacity-50" disabled>
+            </div>
+
+            <div id="urlTab" style="display:none;">
+                <label for="inputImageUrl" class="block text-gray-300 text-sm font-bold mb-2">&gt; PASTE IMAGE URL</label>
+                <div class="flex space-x-2">
+                    <input id="inputImageUrl" type="text" placeholder="https://example.com/image.jpg" class="flex-1 px-3 py-2 rounded-md bg-gray-700 text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
+                    <button id="addUrlButton" class="px-3 py-2 rounded-md bg-blue-600 hover:bg-blue-700 text-white text-sm">Add</button>
+                </div>
+                <p class="text-xs text-gray-400 mt-2">Added URLs:</p>
+                <div id="urlListContainer" class="mt-2 space-y-2"></div>
+            </div>
         </div>
 
         <div class="mb-4">
