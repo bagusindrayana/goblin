@@ -1,5 +1,5 @@
 const MODEL_URL = '/models';
-const TARGET_IMAGE_URL = '/images/bahlil.jpg';
+
 
 let faceMatcher = null;
 let uploadedFiles = [];
@@ -34,26 +34,54 @@ async function initializeSystem() {
 }
 
 async function loadTargetFace() {
-    updateStatus("Acquiring target subject data...");
+    updateStatus("Acquiring target subject data from multiple references...");
     try {
-        const targetImg = await faceapi.fetchImage(TARGET_IMAGE_URL);
-        const detections = await faceapi.detectSingleFace(targetImg).withFaceLandmarks().withFaceDescriptor();
-        if (detections) {
-            const labeledFaceDescriptors = [new faceapi.LabeledFaceDescriptors('TARGET', [detections.descriptor])];
-            faceMatcher = new faceapi.FaceMatcher(labeledFaceDescriptors, 0.6);
-            updateStatus("System ready. Upload images for scan.");
-            inputImageUpload.disabled = false;
-            scanButton.textContent = "INITIATE SCAN";
-            scanButton.classList.add('animate-pulse-once');
-        } else {
-            throw new Error('No face detected in predefined target image.');
+        // gambar referensi
+        const targetLabel = 'TARGET';
+        const referenceImages = [
+            'bahlil.jpg',
+            'bahlil1.jpg',
+            'bahlil2.jpg'
+        ];
+        
+        const descriptors = [];
+
+        for (const imageName of referenceImages) {
+            updateStatus(`Processing reference: ${imageName}...`);
+            const imgUrl = `/images/${imageName}`;
+            const img = await faceapi.fetchImage(imgUrl);
+            const detections = await faceapi.detectSingleFace(img).withFaceLandmarks().withFaceDescriptor();
+            
+            if (detections) {
+                descriptors.push(detections.descriptor);
+            } else {
+                console.warn(`Warning: No face detected in reference image ${imageName}.`);
+            }
         }
+
+        if (descriptors.length === 0) {
+            throw new Error('No faces were detected in any of the reference images. Please check the images in the /images/ folder.');
+        }
+
+   
+        const labeledFaceDescriptors = [
+            new faceapi.LabeledFaceDescriptors(targetLabel, descriptors)
+        ];
+
+        faceMatcher = new faceapi.FaceMatcher(labeledFaceDescriptors, 0.6);
+        
+        updateStatus("System ready. All target references loaded.");
+        inputImageUpload.disabled = false;
+        scanButton.textContent = "INITIATE SCAN";
+        scanButton.classList.add('animate-pulse-once');
+
     } catch (error) {
-        updateStatus(`ERROR: Could not acquire target data.`, 'text-red-500');
+        updateStatus(`ERROR: Could not acquire target data. Check console.`, 'text-red-500');
         console.error("Error loading target face:", error);
+        scanButton.disabled = true;
+        scanButton.textContent = "TARGET ACQUISITION FAILED";
     }
 }
-
 
 async function processImage(file) {
     updateStatus(`Analyzing: ${file.name}...`);
