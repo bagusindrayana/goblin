@@ -50,7 +50,7 @@ async function loadTargetFace() {
             'bahlil.jpg',
             'bahlil1.jpg',
             'bahlil2.jpg',
-            'bahlil3.jpg'
+            'bahlil5.jpg'
         ];
         
         const descriptors = [];
