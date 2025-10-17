@@ -49,7 +49,8 @@ async function loadTargetFace() {
         const referenceImages = [
             'bahlil.jpg',
             'bahlil1.jpg',
-            'bahlil2.jpg'
+            'bahlil2.jpg',
+            'bahlil3.jpg'
         ];
         
         const descriptors = [];
