@@ -20,6 +20,11 @@ const statusMessage = document.getElementById('statusMessage');
 const imageGridContainer = document.getElementById('imageGridContainer');
 const overallMatchStatus = document.getElementById('overallMatchStatus');
 
+// --- Modal Elements ---
+const imageModal = document.getElementById('imageModal');
+const modalImage = document.getElementById('modalImage');
+const modalImageName = document.getElementById('modalImageName');
+const closeModal = document.getElementById('closeModal');
 
 function updateStatus(message, colorClass = 'text-green-400 animate-pulse') {
     statusMessage.textContent = `// ${message} //`;
@@ -335,9 +340,15 @@ scanButton.addEventListener('click', async () => {
     for (const file of uploadedFiles) {
         const result = await processImage(file);
         
-
         const gridItem = document.createElement('div');
-        gridItem.className = 'result-item relative bg-gray-700 border border-gray-600 rounded-md overflow-hidden p-2 flex flex-col items-center justify-center';
+        gridItem.className = 'result-item relative bg-gray-700 border border-gray-600 rounded-md overflow-hidden p-2 flex flex-col items-center justify-center cursor-pointer';
+        
+        // Add click event to open modal
+        gridItem.addEventListener('click', () => {
+            if (result.canvas) {
+                openModal(result.canvas.toDataURL(), result.fileName);
+            }
+        });
 
         if (result.canvas) {
             result.canvas.style.maxWidth = '100%';
@@ -353,6 +364,12 @@ scanButton.addEventListener('click', async () => {
             downloadBtn.className = 'download-btn absolute top-2 right-12 bg-green-600 hover:bg-green-700 text-white p-2 rounded-full transition-all duration-300 shadow-lg';
             downloadBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd" /></svg>`;
             downloadBtn.title = 'Download censored image';
+            
+            // Prevent opening modal
+            downloadBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+            });
+            
             gridItem.appendChild(downloadBtn);
             
             // URL display
@@ -372,7 +389,8 @@ scanButton.addEventListener('click', async () => {
             uploadBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M3 3a1 1 0 011-1h4a1 1 0 110 2H5v12h10V4h-3a1 1 0 110-2h4a1 1 0 011 1v14a1 1 0 01-1 1H4a1 1 0 01-1-1V3z"/></svg>`;
             gridItem.appendChild(uploadBtn);
 
-            uploadBtn.addEventListener('click', async () => {
+            uploadBtn.addEventListener('click', async (e) => {
+                e.stopPropagation(); // Prevent modal from opening
                 if (!result.canvas) return;
                 uploadBtn.disabled = true;
                 const origHTML = uploadBtn.innerHTML;
@@ -432,7 +450,13 @@ scanButton.addEventListener('click', async () => {
             if (!resp.ok) {
                 console.warn(`Failed to fetch ${url}: ${resp.status}`);
                 const gridItem = document.createElement('div');
-                gridItem.className = 'result-item relative bg-gray-700 border border-gray-600 rounded-md overflow-hidden p-2 flex flex-col items-center justify-center';
+                gridItem.className = 'result-item relative bg-gray-700 border border-gray-600 rounded-md overflow-hidden p-2 flex flex-col items-center justify-center cursor-pointer';
+                
+                // Add click event to show error message in modal
+                gridItem.addEventListener('click', () => {
+                    openModal(`data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='400' height='300' viewBox='0 0 400 300'><rect width='400' height='300' fill='%23374151'/><text x='50%' y='50%' font-family='Arial' font-size='20' fill='red' text-anchor='middle' dominant-baseline='middle'>Error: Failed to download URL: ${encodeURIComponent(url)}</text></svg>`, `Error - ${url.split('/').pop()}`);
+                });
+                
                 const errText = document.createElement('p');
                 errText.className = 'text-xs text-red-400';
                 errText.textContent = `Failed to download URL: ${url}`;
@@ -445,7 +469,14 @@ scanButton.addEventListener('click', async () => {
             const result = await processImage(fakeFile);
 
             const gridItem = document.createElement('div');
-            gridItem.className = 'result-item relative bg-gray-700 border border-gray-600 rounded-md overflow-hidden p-2 flex flex-col items-center justify-center';
+            gridItem.className = 'result-item relative bg-gray-700 border border-gray-600 rounded-md overflow-hidden p-2 flex flex-col items-center justify-center cursor-pointer';
+            
+            // Add click event to open modal
+            gridItem.addEventListener('click', () => {
+                if (result.canvas) {
+                    openModal(result.canvas.toDataURL(), result.fileName);
+                }
+            });
 
             if (result.canvas) {
                 result.canvas.style.maxWidth = '100%';
@@ -458,6 +489,12 @@ scanButton.addEventListener('click', async () => {
                 downloadBtn.className = 'download-btn absolute top-2 right-12 bg-green-600 hover:bg-green-700 text-white p-2 rounded-full transition-all duration-300 shadow-lg';
                 downloadBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd" /></svg>`;
                 downloadBtn.title = 'Download censored image';
+                
+                // Prevent opening modal
+                downloadBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                });
+                
                 gridItem.appendChild(downloadBtn);
 
                 const urlAnchor = document.createElement('a');
@@ -474,8 +511,10 @@ scanButton.addEventListener('click', async () => {
                 uploadBtn.title = 'Upload to tmpfiles.org and copy URL';
                 uploadBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M3 3a1 1 0 011-1h4a1 1 0 110 2H5v12h10V4h-3a1 1 0 110-2h4a1 1 0 011 1v14a1 1 0 01-1 1H4a1 1 0 01-1-1V3z"/></svg>`;
                 gridItem.appendChild(uploadBtn);
-
-                uploadBtn.addEventListener('click', async () => {
+                
+                uploadBtn.addEventListener('click', async (e) => {
+                    // Prevent opening modal
+                    e.stopPropagation();
                     if (!result.canvas) return;
                     uploadBtn.disabled = true;
                     const origHTML = uploadBtn.innerHTML;
@@ -525,7 +564,13 @@ scanButton.addEventListener('click', async () => {
         } catch (err) {
             console.error('Error processing URL', url, err);
             const gridItem = document.createElement('div');
-            gridItem.className = 'result-item relative bg-gray-700 border border-gray-600 rounded-md overflow-hidden p-2 flex flex-col items-center justify-center';
+            gridItem.className = 'result-item relative bg-gray-700 border border-gray-600 rounded-md overflow-hidden p-2 flex flex-col items-center justify-center cursor-pointer';
+            
+            // Add click event
+            gridItem.addEventListener('click', () => {
+                openModal(`data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='400' height='300' viewBox='0 0 400 300'><rect width='400' height='300' fill='%23374151'/><text x='50%' y='50%' font-family='Arial' font-size='20' fill='red' text-anchor='middle' dominant-baseline='middle'>Error: Failed to process URL: ${encodeURIComponent(url)}</text></svg>`, `Error - ${url.split('/').pop()}`);
+            });
+            
             const errText = document.createElement('p');
             errText.className = 'text-xs text-red-400';
             errText.textContent = `Error processing URL: ${url}`;
@@ -549,5 +594,34 @@ scanButton.addEventListener('click', async () => {
     scanButton.textContent = "RESCAN";
 });
 
-// --- Inisialisasi ---
+// --- Modal Functions ---
+function openModal(imageSrc, imageName) {
+    modalImage.src = imageSrc;
+    modalImageName.textContent = imageName;
+    imageModal.classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+}
+
+function closeModalFunction() {
+    imageModal.classList.add('hidden');
+    document.body.style.overflow = 'auto'; 
+}
+
+// Close modal when clicking the close button
+closeModal.addEventListener('click', closeModalFunction);
+
+// Close modal when clicking outside the image
+imageModal.addEventListener('click', (e) => {
+    if (e.target === imageModal) {
+        closeModalFunction();
+    }
+});
+
+// Close modal with Escape key
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && !imageModal.classList.contains('hidden')) {
+        closeModalFunction();
+    }
+});
+
 initializeSystem();

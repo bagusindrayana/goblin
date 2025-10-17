@@ -59,3 +59,20 @@ body {
     visibility: visible;
     transform: scale(1);
 }
+
+/* Image Modal Styles */
+#imageModal {
+    backdrop-filter: blur(5px);
+}
+
+#imageModal.hidden {
+    display: none;
+}
+
+#imageModal:not(.hidden) {
+    display: flex;
+}
+
+#modalImage {
+    cursor: zoom-out;
+}
